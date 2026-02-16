@@ -62,7 +62,7 @@ export default function Dashboard() {
       const weight = await AsyncStorage.getItem('userWeight');
       const height = await AsyncStorage.getItem('userHeight');
 
-      const baseURL = Platform.OS === 'android' ? 'http://10.0.2.2:8000' : 'http://localhost:8000';
+      const baseURL = 'https://wellora-61v7.onrender.com';
       const response = await axios.post(`${baseURL}/calculate_health_score`, {
         age: age ? parseInt(age) : null,
         weight: weight ? parseFloat(weight) : null,
@@ -101,7 +101,7 @@ export default function Dashboard() {
     }
     setLoading(true);
     try {
-      const baseURL = Platform.OS === 'android' ? 'http://10.0.2.2:8000' : 'http://localhost:8000';
+      const baseURL = 'https://wellora-61v7.onrender.com';
       const response = await axios.post(`${baseURL}/log_activity`, {
         activity_type: actionType,
         details: details,

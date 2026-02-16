@@ -44,7 +44,7 @@ export default function AnalyticsScreen() {
 
         setLoading(true);
         try {
-            const baseURL = Platform.OS === 'android' ? 'http://10.0.2.2:8000' : 'http://localhost:8000';
+            const baseURL = 'https://wellora-61v7.onrender.com';
             const response = await axios.post(`${baseURL}/generate_report`, {
                 age: parseInt(userAge),
                 weight: parseFloat(userWeight),
