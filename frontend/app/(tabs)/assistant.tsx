@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Message {
   id: string;
@@ -15,7 +16,7 @@ interface Message {
 export default function AssistantScreen() {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([
-    { id: '1', text: "Hello! I'm Wellora, your personal health assistant. How can I help you today?", sender: 'assistant', timestamp: new Date() }
+    { id: '1', text: "Hello! I'm Wellora, your personal AI health assistant. I can help you with diet, fitness, sleep, hydration, and mental well-being. How are you feeling today?", sender: 'assistant', timestamp: new Date() }
   ]);
   const [loading, setLoading] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -29,9 +30,15 @@ export default function AssistantScreen() {
     setLoading(true);
 
     try {
+      // Get user name for personalization
+      const userName = await AsyncStorage.getItem('userName') || 'default_user';
+
       // Use 10.0.2.2 for Android Emulator to access localhost, or localhost for iOS simulator
       const baseURL = Platform.OS === 'android' ? 'http://10.0.2.2:8000' : 'http://localhost:8000';
-      const response = await axios.post(`${baseURL}/analyze_query`, { text: userMessage.text });
+      const response = await axios.post(`${baseURL}/analyze_query`, {
+        text: userMessage.text,
+        user_id: userName
+      });
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: response.data.response,
@@ -82,7 +89,7 @@ export default function AssistantScreen() {
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
-            placeholder="Ask about diet, workout, or sleep..."
+            placeholder="Ask about diet, workout, sleep, or stress..."
             placeholderTextColor="#666"
             value={input}
             onChangeText={setInput}

@@ -42,20 +42,89 @@ async def analyze_query(query: UserQuery):
     intent = nlp.detect_intent(query.text)
     entities = nlp.extract_entities(query.text)
     
-    response = {
+    # Base response dictionary
+    responses = {
+        "dietary_advice": [
+            "A balanced diet is key. Try focusing on lean proteins and complex carbohydrates.",
+            "For optimal health, try to fill half your plate with vegetables at every meal.",
+            "Hydration is often confused with hunger. Make sure you're drinking enough water alongside your meals.",
+            "If you're looking to improve your diet, cutting back on processed sugars is a great first step."
+        ],
+        "fitness_advice": [
+            "Consistency is more important than intensity. Find an activity you enjoy and stick with it.",
+            "Regular exercise, especially a mix of cardio and strength training, can significantly boost your energy.",
+            "Don't forget to warm up! It's essential for preventing injuries and preparing your body for a workout.",
+            "Ideally, aim for 150 minutes of moderate activity per week."
+        ],
+        "sleep_advice": [
+            "Quality sleep starts with a consistent routine. Try to go to bed and wake up at the same time every day.",
+            "Avoid screens at least an hour before bed, as blue light can interfere with your sleep cycle.",
+            "Make sure your sleeping environment is cool, dark, and quiet for the best rest.",
+            "If you're feeling tired during the day, a short 20-minute power nap can help recharge you."
+        ],
+        "mental_health": [
+            "Taking time for yourself is not selfish, it's necessary. Try a 5-minute deep breathing exercise.",
+            "Mindfulness can help reduce stress. Even just focusing on your senses for a few minutes can make a difference.",
+            "If you're feeling overwhelmed, try breaking your tasks into smaller, more manageable steps.",
+            "Don't underestimate the power of a short walk outside to clear your mind."
+        ],
+        "hydration_advice": [
+            "Aim for about 8 glasses of water a day, but listen to your body's thirst signals.",
+            "Eating fruits and vegetables with high water content, like cucumber or watermelon, also helps with hydration.",
+            "If you find plain water boring, try infusing it with lemon, cucumber, or mint.",
+            "Being well-hydrated improves skin health and cognitive function."
+        ],
+        "weight_advice": [
+            "Focus on how you feel and your energy levels rather than just the number on the scale.",
+            "Sustainable weight management comes from small, consistent changes in both diet and activity.",
+            "Muscle is denser than fat, so don't be discouraged if your weight doesn't drop quickly as you get fit.",
+            "A healthy rate of weight loss is typically 0.5 to 1 kg per week."
+        ],
+        "general_health": [
+            "I'm here to help you on your health journey. Feel free to ask about diet, sleep, or exercise!",
+            "Small daily habits lead to big long-term results. What's one healthy choice you can make today?",
+            "Health is a holistic journey involving mind, body, and spirit.",
+            "Listening to your body is the most important skill you can develop for your health."
+        ]
+    }
+
+    # Select a base response
+    import random
+    base_response = random.choice(responses.get(intent, responses["general_health"]))
+    
+    # Personalize based on entities
+    personalized_note = ""
+    for ent in entities:
+        label = ent.get("label")
+        text = ent.get("text")
+        if label == "NUTRIENT":
+            personalized_note += f"\n\nSpeaking of {text}, it's a vital part of a healthy lifestyle!"
+        elif label == "ACTIVITY":
+            personalized_note += f"\n\n{text.capitalize()} is a fantastic way to stay active!"
+        elif label == "CARDINAL":
+            if intent == "dietary_advice":
+                personalized_note += f"\n\nTracking {text} can be useful for reaching your specific dietary goals."
+            elif intent == "fitness_advice":
+                personalized_note += f"\n\n{text} minutes of exercise is a great target to aim for!"
+
+    # Personalize based on User History/State
+    user_context = ""
+    if query.user_id:
+        user_logs = [log for log in activity_logs if log.get("user_id") == query.user_id]
+        if user_logs:
+            last_activity = user_logs[-1]
+            if intent == "fitness_advice" and last_activity["activity_type"] == "workout":
+                user_context = f"\n\nI see you recently did a {last_activity['details']} workout. Keep up that momentum!"
+            elif intent == "dietary_advice" and last_activity["activity_type"] == "meal":
+                user_context = f"\n\nI noticed your last logged meal was {last_activity['details']}. Great job tracking your intake!"
+
+    final_response = base_response + personalized_note + user_context
+    
+    return {
         "intent": intent,
         "entities": entities,
-        "response": f"I understand you are asking about: {intent.replace('_', ' ')}. Let me check my health database."
+        "response": final_response
     }
-    
-    if intent == "dietary_advice":
-        response["response"] = "For a balanced diet, incorporate more whole foods, lean proteins, and plenty of vegetables."
-    elif intent == "fitness_advice":
-        response["response"] = "Regular exercise (150 mins moderate activity/week) is key. Start with walking or light jogging."
-    elif intent == "sleep_advice":
-        response["response"] = "Quality sleep is crucial. Try to maintain a consistent sleep schedule and avoid screens before bed."
-        
-    return response
 
 @app.post("/generate_report")
 async def generate_report(data: HealthReportRequest):
