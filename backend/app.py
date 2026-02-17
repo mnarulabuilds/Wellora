@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 import uvicorn
 import json
+from datetime import datetime, timedelta
 from nlp_utils import SimpleNLP
 from health_model import HealthRecommender
 
@@ -152,7 +153,11 @@ class ActivityLog(BaseModel):
     value: float # calories or duration (minutes)
 
 # In-memory storage for activity logs (in production, use a database)
-activity_logs = []
+activity_logs = [
+    {"user_id": "default_user", "activity_type": "workout", "details": "Jogging", "value": 30, "timestamp": datetime.now() - timedelta(days=2)},
+    {"user_id": "default_user", "activity_type": "workout", "details": "Yoga", "value": 45, "timestamp": datetime.now() - timedelta(days=1)},
+    {"user_id": "default_user", "activity_type": "workout", "details": "Gym", "value": 60, "timestamp": datetime.now()},
+]
 
 @app.post("/log_activity")
 async def log_activity(log: ActivityLog):
@@ -162,7 +167,7 @@ async def log_activity(log: ActivityLog):
         "activity_type": log.activity_type,
         "details": log.details,
         "value": log.value,
-        "timestamp": "now"  # In production, use actual timestamp
+        "timestamp": datetime.now()  # Store actual timestamp
     })
     
     unit = "kcal" if log.activity_type == 'meal' else "minutes"
@@ -268,6 +273,31 @@ async def calculate_health_score(data: HealthScoreRequest):
             "activity": activity_score,
             "consistency": consistency_score
         }
+    }
+
+@app.get("/activity_history")
+async def get_activity_history(user_id: str = "default_user"):
+    # Initialize 7 days with 0
+    now = datetime.now()
+    # Find the Monday of the current week
+    monday = now - timedelta(days=now.weekday())
+    monday = monday.replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    daily_values = [0] * 7
+    labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    
+    for log in activity_logs:
+        if log.get("user_id") == user_id and log.get("activity_type") == "workout":
+            log_time = log.get("timestamp")
+            if isinstance(log_time, datetime):
+                # Check if it's within the current week
+                if log_time >= monday:
+                    day_idx = log_time.weekday()
+                    daily_values[day_idx] += log.get("value", 0)
+    
+    return {
+        "labels": labels,
+        "data": daily_values
     }
 
 if __name__ == "__main__":

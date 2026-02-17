@@ -23,6 +23,10 @@ export default function Dashboard() {
     color: '#6a11cb',
     feedback: []
   });
+  const [activityHistory, setActivityHistory] = useState<{ labels: string[]; data: number[] }>({
+    labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    data: [0, 0, 0, 0, 0, 0, 0]
+  });
 
   useFocusEffect(
     useCallback(() => {
@@ -47,6 +51,8 @@ export default function Dashboard() {
 
           // Fetch health score
           await fetchHealthScore();
+          // Fetch activity history
+          await fetchActivityHistory();
 
         } catch (e) {
           console.log("Error loading name", e);
@@ -62,8 +68,7 @@ export default function Dashboard() {
       const weight = await AsyncStorage.getItem('userWeight');
       const height = await AsyncStorage.getItem('userHeight');
 
-      const baseURL = 'https://wellora-61v7.onrender.com';
-      const response = await axios.post(`${baseURL}/calculate_health_score`, {
+      const response = await axios.post(`${process.env.EXPO_PUBLIC_API_BASE_URL}/calculate_health_score`, {
         age: age ? parseInt(age) : null,
         weight: weight ? parseFloat(weight) : null,
         height: height ? parseFloat(height) : null,
@@ -87,6 +92,18 @@ export default function Dashboard() {
     }
   };
 
+  const fetchActivityHistory = async () => {
+    try {
+      const response = await axios.get(`${process.env.EXPO_PUBLIC_API_BASE_URL}/activity_history?user_id=default_user`);
+      setActivityHistory({
+        labels: response.data.labels,
+        data: response.data.data
+      });
+    } catch (error) {
+      console.error("Failed to fetch activity history", error);
+    }
+  };
+
   const handleAction = (type: 'meal' | 'workout') => {
     setActionType(type);
     setDetails('');
@@ -101,8 +118,7 @@ export default function Dashboard() {
     }
     setLoading(true);
     try {
-      const baseURL = 'https://wellora-61v7.onrender.com';
-      const response = await axios.post(`${baseURL}/log_activity`, {
+      const response = await axios.post(`${process.env.EXPO_PUBLIC_API_BASE_URL}/log_activity`, {
         activity_type: actionType,
         details: details,
         value: parseFloat(value)
@@ -112,6 +128,7 @@ export default function Dashboard() {
 
       // Refresh health score after logging activity
       await fetchHealthScore();
+      await fetchActivityHistory();
     } catch (error) {
       Alert.alert("Error", "Failed to log activity.");
     } finally {
@@ -188,18 +205,10 @@ export default function Dashboard() {
         <View style={styles.chartContainer}>
           <LineChart
             data={{
-              labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+              labels: activityHistory.labels,
               datasets: [
                 {
-                  data: [
-                    Math.random() * 100,
-                    Math.random() * 100,
-                    Math.random() * 100,
-                    Math.random() * 100,
-                    Math.random() * 100,
-                    Math.random() * 100,
-                    Math.random() * 100
-                  ]
+                  data: activityHistory.data
                 }
               ]
             }}

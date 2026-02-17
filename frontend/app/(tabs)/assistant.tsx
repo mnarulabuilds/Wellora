@@ -33,9 +33,7 @@ export default function AssistantScreen() {
       // Get user name for personalization
       const userName = await AsyncStorage.getItem('userName') || 'default_user';
 
-      // Use 10.0.2.2 for Android Emulator to access localhost, or localhost for iOS simulator
-      const baseURL = 'https://wellora-61v7.onrender.com';
-      const response = await axios.post(`${baseURL}/analyze_query`, {
+      const response = await axios.post(`${process.env.EXPO_PUBLIC_API_BASE_URL}/analyze_query`, {
         text: userMessage.text,
         user_id: userName
       });
