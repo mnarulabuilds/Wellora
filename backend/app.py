@@ -46,46 +46,64 @@ async def analyze_query(query: UserQuery):
     # Base response dictionary
     responses = {
         "dietary_advice": [
-            "A balanced diet is key. Try focusing on lean proteins and complex carbohydrates.",
-            "For optimal health, try to fill half your plate with vegetables at every meal.",
-            "Hydration is often confused with hunger. Make sure you're drinking enough water alongside your meals.",
-            "If you're looking to improve your diet, cutting back on processed sugars is a great first step."
+            "A balanced diet is key. Try focusing on lean proteins like lentils or chicken, and complex carbohydrates like quinoa or sweet potatoes.",
+            "For optimal health, try to fill half your plate with colorful vegetables at every meal. It ensures a wide range of micronutrients.",
+            "Hydration is often confused with hunger. Make sure you're drinking enough water alongside your meals to support digestion.",
+            "If you're looking to improve your diet, cutting back on processed sugars and focusing on whole fruits is a great first step.",
+            "Incorporate healthy fats like avocado, nuts, and olive oil for better brain health and hormone regulation."
         ],
         "fitness_advice": [
-            "Consistency is more important than intensity. Find an activity you enjoy and stick with it.",
-            "Regular exercise, especially a mix of cardio and strength training, can significantly boost your energy.",
-            "Don't forget to warm up! It's essential for preventing injuries and preparing your body for a workout.",
-            "Ideally, aim for 150 minutes of moderate activity per week."
+            "Consistency is more important than intensity. Find an activity you enjoy—be it swimming, dancing, or lifting—and stick with it.",
+            "Regular exercise, especially a mix of cardio and resistance training, can significantly boost your metabolic rate.",
+            "Don't forget to warm up! Dynamic stretching is essential for preventing injuries and preparing your body for a workout.",
+            "Ideally, aim for 150 minutes of moderate activity per week. Even three 10-minute walks a day can make a massive difference.",
+            "Try 'Zone 2' training (moderate intensity where you can still talk) to build a strong cardiovascular foundation."
         ],
         "sleep_advice": [
-            "Quality sleep starts with a consistent routine. Try to go to bed and wake up at the same time every day.",
-            "Avoid screens at least an hour before bed, as blue light can interfere with your sleep cycle.",
-            "Make sure your sleeping environment is cool, dark, and quiet for the best rest.",
-            "If you're feeling tired during the day, a short 20-minute power nap can help recharge you."
+            "Quality sleep starts with a consistent routine. Try to go to bed and wake up at the same time every day, even on weekends.",
+            "Avoid screens at least an hour before bed, as blue light can interfere with melatonin production.",
+            "Make sure your sleeping environment is cool (around 18°C), dark, and quiet for the deepest restorative rest.",
+            "If you're feeling tired during the day, a short 20-minute power nap before 3 PM can help recharge you without affecting night sleep.",
+            "Magnesium-rich foods or a warm bath before bed can help relax your muscles and prepare your body for sleep."
         ],
         "mental_health": [
-            "Taking time for yourself is not selfish, it's necessary. Try a 5-minute deep breathing exercise.",
-            "Mindfulness can help reduce stress. Even just focusing on your senses for a few minutes can make a difference.",
-            "If you're feeling overwhelmed, try breaking your tasks into smaller, more manageable steps.",
-            "Don't underestimate the power of a short walk outside to clear your mind."
+            "Taking time for yourself is not selfish, it's necessary. Try a 5-minute boxed breathing exercise (4-4-4-4) to calm your nervous system.",
+            "Mindfulness can help reduce stress. Even just focusing on your senses for a few minutes can lower cortisol levels.",
+            "If you're feeling overwhelmed, try 'brain dumping'—writing down every single thing on your mind for 5 minutes.",
+            "Don't underestimate the power of 'green time'—a short walk in nature has been shown to reduce rumination and anxiety.",
+            "Connect with a friend or loved one. Social connection is one of the strongest predictors of mental well-being."
         ],
         "hydration_advice": [
-            "Aim for about 8 glasses of water a day, but listen to your body's thirst signals.",
-            "Eating fruits and vegetables with high water content, like cucumber or watermelon, also helps with hydration.",
-            "If you find plain water boring, try infusing it with lemon, cucumber, or mint.",
-            "Being well-hydrated improves skin health and cognitive function."
+            "Aim for about 2-3 liters of water a day, but listen to your body's thirst signals and adjust for activity level.",
+            "Eating fruits and vegetables with high water content, like cucumber, celery, or watermelon, is a delicious way to stay hydrated.",
+            "If you find plain water boring, try infusing it with lemon, ginger, or mint for added antioxidants.",
+            "Being well-hydrated improves skin elasticity, cognitive function, and helps your kidneys flush out toxins."
         ],
         "weight_advice": [
-            "Focus on how you feel and your energy levels rather than just the number on the scale.",
-            "Sustainable weight management comes from small, consistent changes in both diet and activity.",
-            "Muscle is denser than fat, so don't be discouraged if your weight doesn't drop quickly as you get fit.",
-            "A healthy rate of weight loss is typically 0.5 to 1 kg per week."
+            "Focus on non-scale victories like increased energy, better-fitting clothes, and improved strength rather than just the number on the scale.",
+            "Sustainable weight management comes from small, consistent changes. Focus on adding protein and fiber to every meal.",
+            "Muscle is denser than fat. If you're lifting weights, your weight might stay the same while your body composition improves.",
+            "A healthy and sustainable rate of weight loss is typically 0.5 to 1% of your body weight per week."
+        ],
+        "spiritual_health": [
+            "Connecting with your inner self through daily gratitude can shift your perspective from lack to abundance.",
+            "Spiritual wellness is about finding meaning. Take 10 minutes today to reflect on what truly matters to you.",
+            "Yoga is a beautiful bridge between the physical and spiritual. Even 15 minutes of Sun Salutations can ground your energy.",
+            "Deep, conscious breathing helps align your mind and body. Try inhaling peace and exhaling tension.",
+            "Spend time in silence. In the quiet, you can often find the answers you've been looking for."
         ],
         "general_health": [
-            "I'm here to help you on your health journey. Feel free to ask about diet, sleep, or exercise!",
-            "Small daily habits lead to big long-term results. What's one healthy choice you can make today?",
-            "Health is a holistic journey involving mind, body, and spirit.",
-            "Listening to your body is the most important skill you can develop for your health."
+            "I'm here to support your holistic journey. Feel free to ask about nutrition, fitness, sleep, or spiritual wellness!",
+            "Small daily habits lead to big long-term results. What's one small, healthy choice you can make in the next hour?",
+            "Health is a holistic journey involving mind, body, and spirit. Treat yourself with kindness today.",
+            "Listening to your body's signals is the most important skill you can develop for long-term health and fitness."
+        ],
+        "pain_points": [
+            "If you're dealing with physical pain, remember to rest and consult a professional if it persists. Gentle yoga or stretching might help with minor back or neck tension.",
+            "Low energy often stems from a combination of dehydration, poor sleep, or lack of movement. Try a 10-minute walk and a glass of water.",
+            "Feeling stressed or anxious? Box breathing and 'grounding' (noticing 5 things you can see, 4 you can touch...) are powerful tools for instant relief.",
+            "For headaches, ensure you're not straining your eyes at a screen. A dark room and hydration are often the first steps to recovery.",
+            "If you're feeling bloated, try ginger tea or a light walk after your meal to aid digestion."
         ]
     }
 
@@ -98,15 +116,18 @@ async def analyze_query(query: UserQuery):
     for ent in entities:
         label = ent.get("label")
         text = ent.get("text")
+        low_text = text.lower()
         if label == "NUTRIENT":
-            personalized_note += f"\n\nSpeaking of {text}, it's a vital part of a healthy lifestyle!"
+            personalized_note += f"\n\nFocusing on {text} is a great choice! It's essential for your body's recovery and energy levels."
         elif label == "ACTIVITY":
-            personalized_note += f"\n\n{text.capitalize()} is a fantastic way to stay active!"
+            personalized_note += f"\n\n{text.capitalize()} is a fantastic way to boost your mood and cardiovascular health!"
+        elif label == "PAIN_TYPE":
+            personalized_note += f"\n\nI'm sorry to hear about your {text}. Please take it slow and don't push through sharp pain."
         elif label == "CARDINAL":
             if intent == "dietary_advice":
-                personalized_note += f"\n\nTracking {text} can be useful for reaching your specific dietary goals."
+                personalized_note += f"\n\nTracking {text} units of your intake can help you stay on target with your goals."
             elif intent == "fitness_advice":
-                personalized_note += f"\n\n{text} minutes of exercise is a great target to aim for!"
+                personalized_note += f"\n\nAiming for {text} minutes is a solid plan. Consistency over intensity is the secret!"
 
     # Personalize based on User History/State
     user_context = ""

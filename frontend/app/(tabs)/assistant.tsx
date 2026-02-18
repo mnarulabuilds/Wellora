@@ -16,7 +16,7 @@ interface Message {
 export default function AssistantScreen() {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([
-    { id: '1', text: "Hello! I'm Wellora, your personal AI health assistant. I can help you with diet, fitness, sleep, hydration, and mental well-being. How are you feeling today?", sender: 'assistant', timestamp: new Date() }
+    { id: '1', text: "Hello! I'm Wellora, your personal AI health assistant. I can help you with diet, fitness, sleep, hydration, mental well-being, and spiritual wellness. How are you feeling today?", sender: 'assistant', timestamp: new Date() }
   ]);
   const [loading, setLoading] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -87,7 +87,7 @@ export default function AssistantScreen() {
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
-            placeholder="Ask about diet, workout, sleep, or stress..."
+            placeholder="Ask about diet, workout, sleep, stress, or spiritual health..."
             placeholderTextColor="#666"
             value={input}
             onChangeText={setInput}

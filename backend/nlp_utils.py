@@ -14,12 +14,14 @@ except Exception:
 class SimpleNLP:
     def __init__(self):
         self.intents = {
-            "dietary_advice": ["diet", "food", "nutrition", "eat", "meal", "protein", "calories", "fat", "carbs", "sugar", "vitamin"],
-            "fitness_advice": ["exercise", "workout", "fitness", "run", "gym", "cardio", "strength", "training", "workout", "walk", "jog", "lift"],
-            "sleep_advice": ["sleep", "tired", "insomnia", "rest", "nap", "bedtime", "night", "awake", "exhausted"],
-            "mental_health": ["stress", "anxiety", "meditation", "relaxed", "mental", "mood", "happy", "sad", "unmotivated", "depressed"],
-            "hydration_advice": ["water", "drink", "hydration", "thirsty", "dehydration", "liquid"],
-            "weight_advice": ["weight", "fat", "lose", "gain", "muscle", "mass", "bmi", "heavy", "thin"]
+            "dietary_advice": ["diet", "food", "nutrition", "eat", "meal", "protein", "calories", "fat", "carbs", "sugar", "vitamin", "recipe", "healthy", "snack"],
+            "fitness_advice": ["exercise", "workout", "fitness", "run", "gym", "cardio", "strength", "training", "workout", "walk", "jog", "lift", "squat", "pushup", "muscle"],
+            "sleep_advice": ["sleep", "tired", "insomnia", "rest", "nap", "bedtime", "night", "awake", "exhausted", "dream", "snore"],
+            "mental_health": ["stress", "anxiety", "meditation", "relaxed", "mental", "mood", "happy", "sad", "unmotivated", "depressed", "therapy", "peace", "calm", "focus"],
+            "hydration_advice": ["water", "drink", "hydration", "thirsty", "dehydration", "liquid", "bottle", "fluid"],
+            "weight_advice": ["weight", "fat", "lose", "gain", "muscle", "mass", "bmi", "heavy", "thin", "scale", "obese"],
+            "spiritual_health": ["spirit", "soul", "purpose", "meaning", "connection", "inner", "universe", "yoga", "breathe", "gratitude", "nature", "meditation", "mindfulness"],
+            "pain_points": ["pain", "hurt", "headache", "backache", "sore", "tired", "fatigue", "stressed", "anxious", "low energy", "insomnia", "bloated", "cramp"]
         }
 
     def detect_intent(self, text: str):
@@ -55,6 +57,12 @@ class SimpleNLP:
             entities.append({"label": "NUTRIENT", "text": "protein"})
         if "cardio" in text.lower():
             entities.append({"label": "ACTIVITY", "text": "cardio"})
+        
+        # Pain types
+        pain_keywords = ["headache", "backache", "back pain", "neck pain", "sore", "bloated", "cramp", "ach", "stress", "anxiety"]
+        for kw in pain_keywords:
+            if kw in text.lower():
+                entities.append({"label": "PAIN_TYPE", "text": kw})
         
         # Extract numbers (e.g., "I walked 5km", "I ate 2000 calories")
         numbers = re.findall(r'\d+', text)

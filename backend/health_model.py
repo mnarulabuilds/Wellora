@@ -43,9 +43,15 @@ class HealthRecommender:
 
         # Goal-based advice
         if "stress_reduction" in goals:
-             recommendations.append("Consider mindfulness practices or meditation 10 mins daily.")
+             recommendations.append("Incorporate 10-15 minutes of guided meditation or deep breathing exercises daily to lower cortisol levels.")
         if "better_sleep" in goals:
-             recommendations.append("Limit caffeine intake after 2 PM and reduce blue light exposure at night.")
+             recommendations.append("Establish a 'digital sunset'—no screens 60 minutes before bed to improve sleep architecture.")
+        if "muscle_gain" in goals:
+             recommendations.append("Focus on progressive overload in your strength training and ensure protein intake is around 1.6g/kg of body weight.")
+        if "spiritual_growth" in goals:
+             recommendations.append("Try daily journaling or spending 20 minutes in nature to connect with your inner self and find peace.")
+        if "improved_flexibility" in goals:
+             recommendations.append("Add a 20-minute yoga flow or dynamic stretching routine at least 3 times a week.")
              
         return recommendations
 
