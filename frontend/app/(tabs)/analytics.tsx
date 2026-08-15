@@ -1,340 +1,514 @@
-import { StyleSheet, View, Text, ScrollView, Dimensions, TouchableOpacity, ActivityIndicator, Platform, Alert } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import React, { useCallback, useState } from 'react';
+import {
+  ActivityIndicator,
+  Dimensions,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { BarChart, PieChart, LineChart } from "react-native-chart-kit";
-import { useState, useCallback } from 'react';
-import { useFocusEffect } from 'expo-router';
-import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BarChart, LineChart, PieChart } from 'react-native-chart-kit';
+import { useFocusEffect, useRouter } from 'expo-router';
 
-const screenWidth = Dimensions.get("window").width;
+import { ChartSkeleton } from '@/components/SkeletonLoader';
+import { useToast } from '@/components/Toast';
+import { theme } from '@/constants/theme';
+import { generateReport } from '@/lib/api';
+import { isProfileComplete, loadProfile } from '@/lib/storage';
+import { HealthReport, UserProfile } from '@/lib/types';
 
 export default function AnalyticsScreen() {
-    const [loading, setLoading] = useState(false);
-    const [reportData, setReportData] = useState<any>(null);
-    const [userAge, setUserAge] = useState<string>('');
-    const [userWeight, setUserWeight] = useState<string>('');
-    const [userHeight, setUserHeight] = useState<string>('');
+  const router = useRouter();
+  const { showToast } = useToast();
 
-    useFocusEffect(
-        useCallback(() => {
-            loadUserProfile();
-        }, [])
-    );
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [profileComplete, setProfileComplete] = useState(true);
+  const [userProfile, setUserProfile] = useState<Partial<UserProfile>>({});
+  const [reportData, setReportData] = useState<HealthReport | null>(null);
 
-    const loadUserProfile = async () => {
-        try {
-            const age = await AsyncStorage.getItem('userAge');
-            const weight = await AsyncStorage.getItem('userWeight');
-            const height = await AsyncStorage.getItem('userHeight');
-            if (age) setUserAge(age);
-            if (weight) setUserWeight(weight);
-            if (height) setUserHeight(height);
-        } catch (e) {
-            console.error("Failed to load user profile", e);
+  const screenWidth = Dimensions.get('window').width;
+
+  const fetchAnalytics = useCallback(async (isRefresh = false) => {
+    if (!isRefresh) setLoading(true);
+    try {
+      const complete = await isProfileComplete();
+      setProfileComplete(complete);
+
+      const profile = await loadProfile();
+      setUserProfile(profile);
+
+      if (complete && profile.age && profile.weight && profile.height) {
+        const report = await generateReport(profile);
+        setReportData(report);
+      }
+    } catch {
+      showToast('Could not load report. Please check server.', 'error');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [showToast]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchAnalytics();
+    }, [fetchAnalytics])
+  );
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchAnalytics(true);
+  };
+
+  const chartConfig = {
+    backgroundColor: theme.colors.surface,
+    backgroundGradientFrom: theme.colors.surface,
+    backgroundGradientTo: theme.colors.surfaceSubtle,
+    color: (opacity = 1) => `rgba(79, 172, 254, ${opacity})`,
+    strokeWidth: 2,
+    barPercentage: 0.6,
+    useShadowColorFromDataset: false,
+    decimalPlaces: 1,
+    labelColor: (opacity = 1) => `rgba(165, 163, 194, ${opacity})`,
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.colors.accent}
+            colors={[theme.colors.accent]}
+          />
         }
-    };
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.title}>Health Analytics</Text>
+            <Text style={styles.subtitle}>Personalized Projections & Macros</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.refreshBtn}
+            onPress={() => fetchAnalytics()}
+            accessibilityLabel="Refresh Report"
+          >
+            <Ionicons name="refresh" size={22} color={theme.colors.accent} />
+          </TouchableOpacity>
+        </View>
 
-    const generateReport = async () => {
-        if (!userAge || !userWeight || !userHeight) {
-            showAlert("Missing Info", "Please update your profile first!");
-            return;
-        }
+        {/* If Profile Incomplete */}
+        {!profileComplete && !loading && (
+          <View style={styles.card}>
+            <Ionicons name="alert-circle" size={32} color={theme.colors.warning} />
+            <Text style={styles.incompleteTitle}>Complete Your Profile</Text>
+            <Text style={styles.incompleteSub}>
+              To calculate accurate BMI, TDEE, macro breakdowns, and 12-week weight projections,
+              please input your age, weight, and height.
+            </Text>
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={() => router.push('/profile')}
+            >
+              <LinearGradient colors={theme.colors.accentGradient} style={styles.gradientBtn}>
+                <Text style={styles.btnText}>Go to Profile</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        )}
 
-        setLoading(true);
-        try {
-            const response = await axios.post(`${process.env.EXPO_PUBLIC_API_BASE_URL}/generate_report`, {
-                age: parseInt(userAge),
-                weight: parseFloat(userWeight),
-                height: parseFloat(userHeight),
-                activity_level: "light", // Default for now, could be dynamic
-                dietary_preferences: [],
-                health_goals: ["maintenance"]
-            });
-            setReportData(response.data);
-        } catch (error) {
-            console.error(error);
-            showAlert("Error", "Failed to generate report.");
-        } finally {
-            setLoading(false);
-        }
-    };
+        {loading && (
+          <View style={{ gap: 16, marginTop: 10 }}>
+            <ChartSkeleton />
+            <ChartSkeleton />
+          </View>
+        )}
 
-    const showAlert = (title: string, message: string) => {
-        if (Platform.OS === 'web') {
-            window.alert(`${title}: ${message}`);
-        } else {
-            Alert.alert(title, message);
-        }
-    };
-
-    const chartConfig = {
-        backgroundGradientFrom: "#1c1b33",
-        backgroundGradientTo: "#1c1b33",
-        color: (opacity = 1) => `rgba(26, 255, 146, ${opacity})`,
-        strokeWidth: 2,
-        barPercentage: 0.6,
-        useShadowColorFromDataset: false,
-        decimalPlaces: 1,
-        labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-    };
-
-    return (
-        <SafeAreaView style={styles.container}>
-            <ScrollView contentContainerStyle={styles.scrollContent}>
-                <Text style={styles.title}>Health Analytics</Text>
-
-                <View style={styles.card}>
-                    <Text style={styles.description}>
-                        Generate a comprehensive health report based on your profile data.
-                    </Text>
-
-                    <TouchableOpacity onPress={generateReport} disabled={loading}>
-                        <LinearGradient
-                            colors={['#FF416C', '#FF4B2B']}
-                            style={styles.button}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                        >
-                            <Text style={styles.buttonText}>
-                                {loading ? 'Generating...' : 'Generate Report'}
-                            </Text>
-                        </LinearGradient>
-                    </TouchableOpacity>
+        {/* Report Content */}
+        {reportData && !loading && (
+          <View style={styles.resultsContainer}>
+            {/* Key Metrics Row */}
+            <View style={styles.metricsRow}>
+              <View style={styles.metricCard}>
+                <Text style={styles.metricLabel}>BMI Score</Text>
+                <Text style={styles.metricValue}>{reportData.bmi}</Text>
+                <View
+                  style={[
+                    styles.metricBadge,
+                    {
+                      backgroundColor:
+                        reportData.bmi_category === 'Normal'
+                          ? 'rgba(16, 185, 129, 0.2)'
+                          : 'rgba(245, 158, 11, 0.2)',
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.metricSub,
+                      {
+                        color:
+                          reportData.bmi_category === 'Normal'
+                            ? theme.colors.success
+                            : theme.colors.warning,
+                      },
+                    ]}
+                  >
+                    {reportData.bmi_category}
+                  </Text>
                 </View>
+              </View>
 
-                {loading && (
-                    <ActivityIndicator size="large" color="#FF416C" style={{ marginTop: 20 }} />
-                )}
+              <View style={styles.metricCard}>
+                <Text style={styles.metricLabel}>Daily Calorie Target</Text>
+                <Text style={styles.metricValue}>{reportData.daily_calories}</Text>
+                <Text style={styles.metricSubMuted}>
+                  {reportData.tdee ? `TDEE: ~${reportData.tdee} kcal` : 'kcal / day'}
+                </Text>
+              </View>
+            </View>
 
-                {reportData && (
-                    <View style={styles.resultsContainer}>
-                        {/* Key Metrics */}
-                        <View style={styles.metricsRow}>
-                            <View style={styles.metricCard}>
-                                <Text style={styles.metricLabel}>BMI</Text>
-                                <Text style={styles.metricValue}>{reportData.bmi}</Text>
-                                <Text style={styles.metricSub}>{reportData.bmi_category}</Text>
-                            </View>
-                            <View style={styles.metricCard}>
-                                <Text style={styles.metricLabel}>Daily Cal</Text>
-                                <Text style={styles.metricValue}>{reportData.daily_calories}</Text>
-                                <Text style={styles.metricSub}>kcal/day</Text>
-                            </View>
-                        </View>
+            {/* BMI Reference Chart */}
+            <Text style={styles.chartTitle}>BMI Category Spectrum</Text>
+            <View style={styles.chartCard}>
+              <BarChart
+                data={{
+                  labels: ['Under', 'Normal', 'Over', 'Obese', 'You'],
+                  datasets: [
+                    {
+                      data: [18.5, 24.9, 29.9, 35, reportData.bmi],
+                    },
+                  ],
+                }}
+                width={screenWidth - 56}
+                height={200}
+                yAxisLabel=""
+                yAxisSuffix=""
+                chartConfig={{
+                  ...chartConfig,
+                  color: (opacity = 1) => `rgba(79, 172, 254, ${opacity})`,
+                }}
+                showValuesOnTopOfBars
+                style={{ borderRadius: 16, paddingRight: 20 }}
+              />
+            </View>
 
-                        {/* BMI Chart (Bar Chart for visual representation) */}
-                        <Text style={styles.chartTitle}>BMI Category</Text>
-                        <View style={styles.chartContainer}>
-                            <BarChart
-                                data={{
-                                    labels: ["Under", "Normal", "Over", "Obese", "You"],
-                                    datasets: [
-                                        {
-                                            data: [18.5, 24.9, 29.9, 35, reportData.bmi]
-                                        }
-                                    ]
-                                }}
-                                width={screenWidth - 40}
-                                height={220}
-                                yAxisLabel=""
-                                yAxisSuffix=""
-                                chartConfig={{
-                                    ...chartConfig,
-                                    color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-                                    labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-                                }}
-                                verticalLabelRotation={0}
-                                style={{ borderRadius: 16 }}
-                            />
-                        </View>
+            {/* Recommended Macros Breakdown */}
+            <Text style={styles.chartTitle}>Target Daily Macros</Text>
+            <View style={styles.chartCard}>
+              {reportData.charts.macros.grams && (
+                <View style={styles.macroGramsRow}>
+                  <View style={styles.macroStat}>
+                    <Text style={[styles.macroVal, { color: theme.colors.calories }]}>
+                      {reportData.charts.macros.grams.protein}g
+                    </Text>
+                    <Text style={styles.macroName}>Protein (35%)</Text>
+                  </View>
+                  <View style={styles.macroStat}>
+                    <Text style={[styles.macroVal, { color: theme.colors.steps }]}>
+                      {reportData.charts.macros.grams.carbs}g
+                    </Text>
+                    <Text style={styles.macroName}>Carbs (40%)</Text>
+                  </View>
+                  <View style={styles.macroStat}>
+                    <Text style={[styles.macroVal, { color: '#FCD34D' }]}>
+                      {reportData.charts.macros.grams.fats}g
+                    </Text>
+                    <Text style={styles.macroName}>Fats (25%)</Text>
+                  </View>
+                </View>
+              )}
 
-                        {/* Macro Breakdown (Pie Chart) - Mocked based on typical ratios */}
-                        <Text style={styles.chartTitle}>Recommended Macros (g)</Text>
-                        <View style={styles.chartContainer}>
-                            <PieChart
-                                data={[
-                                    {
-                                        name: "Protein",
-                                        population: Math.round(reportData.daily_calories * reportData.charts.macros.data[0] / 4),
-                                        color: "#FF6B6B",
-                                        legendFontColor: "#fff",
-                                        legendFontSize: 14
-                                    },
-                                    {
-                                        name: "Carbs",
-                                        population: Math.round(reportData.daily_calories * reportData.charts.macros.data[1] / 4),
-                                        color: "#4ECDC4",
-                                        legendFontColor: "#fff",
-                                        legendFontSize: 14
-                                    },
-                                    {
-                                        name: "Fats",
-                                        population: Math.round(reportData.daily_calories * reportData.charts.macros.data[2] / 9),
-                                        color: "#FFE66D",
-                                        legendFontColor: "#fff",
-                                        legendFontSize: 14
-                                    }
-                                ]}
-                                width={screenWidth - 40}
-                                height={220}
-                                chartConfig={chartConfig}
-                                accessor={"population"}
-                                backgroundColor={"transparent"}
-                                paddingLeft={"15"}
-                                center={[10, 0]}
-                                absolute
-                            />
-                        </View>
+              <PieChart
+                data={[
+                  {
+                    name: 'Protein',
+                    population: Math.round(
+                      (reportData.daily_calories * reportData.charts.macros.data[0]) / 4
+                    ),
+                    color: theme.colors.calories,
+                    legendFontColor: theme.colors.textSecondary,
+                    legendFontSize: 13,
+                  },
+                  {
+                    name: 'Carbs',
+                    population: Math.round(
+                      (reportData.daily_calories * reportData.charts.macros.data[1]) / 4
+                    ),
+                    color: theme.colors.steps,
+                    legendFontColor: theme.colors.textSecondary,
+                    legendFontSize: 13,
+                  },
+                  {
+                    name: 'Fats',
+                    population: Math.round(
+                      (reportData.daily_calories * reportData.charts.macros.data[2]) / 9
+                    ),
+                    color: '#FCD34D',
+                    legendFontColor: theme.colors.textSecondary,
+                    legendFontSize: 13,
+                  },
+                ]}
+                width={screenWidth - 56}
+                height={190}
+                chartConfig={chartConfig}
+                accessor="population"
+                backgroundColor="transparent"
+                paddingLeft="15"
+                center={[8, 0]}
+                absolute
+              />
+            </View>
 
-                        {/* Weight Projection (Line Chart) */}
-                        <Text style={styles.chartTitle}>Proj. Weight Change (12 Weeks)</Text>
-                        <View style={styles.chartContainer}>
-                            <LineChart
-                                data={{
-                                    labels: ["W1", "W4", "W8", "W12"],
-                                    datasets: [
-                                        {
-                                            data: [
-                                                0,
-                                                reportData.charts.weight_projection.change[3],
-                                                reportData.charts.weight_projection.change[7],
-                                                reportData.charts.weight_projection.change[11]
-                                            ]
-                                        }
-                                    ]
-                                }}
-                                width={screenWidth - 40}
-                                height={220}
-                                yAxisLabel=""
-                                yAxisSuffix="kg"
-                                chartConfig={{
-                                    ...chartConfig,
-                                    color: (opacity = 1) => `rgba(255, 99, 132, ${opacity})`,
-                                    labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-                                }}
-                                bezier
-                                style={{ borderRadius: 16 }}
-                            />
-                        </View>
+            {/* 12-Week Weight Projection */}
+            <Text style={styles.chartTitle}>12-Week Weight Trajectory</Text>
+            <View style={styles.chartCard}>
+              <LineChart
+                data={{
+                  labels: ['W1', 'W3', 'W6', 'W9', 'W12'],
+                  datasets: [
+                    {
+                      data: [
+                        reportData.charts.weight_projection.weights
+                          ? reportData.charts.weight_projection.weights[0]
+                          : 0,
+                        reportData.charts.weight_projection.weights
+                          ? reportData.charts.weight_projection.weights[2]
+                          : 0,
+                        reportData.charts.weight_projection.weights
+                          ? reportData.charts.weight_projection.weights[5]
+                          : 0,
+                        reportData.charts.weight_projection.weights
+                          ? reportData.charts.weight_projection.weights[8]
+                          : 0,
+                        reportData.charts.weight_projection.weights
+                          ? reportData.charts.weight_projection.weights[11]
+                          : 0,
+                      ],
+                    },
+                  ],
+                }}
+                width={screenWidth - 56}
+                height={200}
+                yAxisLabel=""
+                yAxisSuffix="kg"
+                chartConfig={{
+                  ...chartConfig,
+                  color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
+                  propsForDots: {
+                    r: '5',
+                    strokeWidth: '2',
+                    stroke: '#10B981',
+                  },
+                }}
+                bezier
+                style={{ borderRadius: 16, paddingRight: 40 }}
+              />
+            </View>
 
-                        <View style={styles.card}>
-                            <Text style={styles.cardTitle}>Recommendations</Text>
-                            {reportData.recommendations.map((rec: string, index: number) => (
-                                <View key={index} style={styles.recItem}>
-                                    <Ionicons name="checkmark-circle" size={20} color="#4ECDC4" />
-                                    <Text style={styles.recText}>{rec}</Text>
-                                </View>
-                            ))}
-                        </View>
+            {/* Actionable Recommendations */}
+            <View style={styles.card}>
+              <View style={styles.cardTitleRow}>
+                <Ionicons name="bulb-outline" size={22} color={theme.colors.accent} />
+                <Text style={styles.cardTitle}>Personalized Recommendations</Text>
+              </View>
 
-                    </View>
-                )}
-            </ScrollView>
-        </SafeAreaView>
-    );
+              {reportData.recommendations.map((rec, index) => (
+                <View key={index} style={styles.recItem}>
+                  <Ionicons name="checkmark-circle" size={18} color={theme.colors.success} />
+                  <Text style={styles.recText}>{rec}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+      </ScrollView>
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#0f0c29',
-    },
-    scrollContent: {
-        padding: 20,
-        paddingBottom: 40,
-    },
-    title: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        color: 'white',
-        marginBottom: 20,
-    },
-    card: {
-        backgroundColor: '#1c1b33',
-        borderRadius: 20,
-        padding: 20,
-        marginBottom: 20,
-        borderWidth: 1,
-        borderColor: '#2a2a40',
-    },
-    cardTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: 'white',
-        marginBottom: 15,
-    },
-    description: {
-        color: '#ccc',
-        fontSize: 16,
-        marginBottom: 20,
-        lineHeight: 24,
-    },
-    button: {
-        padding: 16,
-        borderRadius: 12,
-        alignItems: 'center',
-    },
-    buttonText: {
-        color: 'white',
-        fontWeight: 'bold',
-        fontSize: 16,
-    },
-    resultsContainer: {
-        marginTop: 20,
-    },
-    metricsRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 20,
-    },
-    metricCard: {
-        backgroundColor: '#2a2a40',
-        borderRadius: 16,
-        padding: 20,
-        width: '48%',
-        alignItems: 'center',
-    },
-    metricLabel: {
-        color: '#aaa',
-        fontSize: 14,
-        marginBottom: 8,
-    },
-    metricValue: {
-        color: 'white',
-        fontSize: 24,
-        fontWeight: 'bold',
-    },
-    metricSub: {
-        color: '#888',
-        fontSize: 12,
-        marginTop: 4,
-    },
-    chartTitle: {
-        color: 'white',
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginTop: 10,
-        marginBottom: 10,
-    },
-    chartContainer: {
-        alignItems: 'center',
-        marginVertical: 10,
-        backgroundColor: '#1c1b33',
-        borderRadius: 16,
-        padding: 10,
-        overflow: 'hidden', // Contain chart background
-    },
-    recItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    recText: {
-        color: '#eee',
-        fontSize: 15,
-        marginLeft: 10,
-        flex: 1,
-    },
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    marginTop: 10,
+  },
+  title: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: theme.colors.text,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+    marginTop: 2,
+  },
+  refreshBtn: {
+    padding: 8,
+    backgroundColor: theme.colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.surfaceBorder,
+  },
+  card: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: theme.colors.surfaceBorder,
+    alignItems: 'center',
+  },
+  incompleteTitle: {
+    color: theme.colors.text,
+    fontSize: 18,
+    fontWeight: '700',
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  incompleteSub: {
+    color: theme.colors.textSecondary,
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  actionBtn: {
+    borderRadius: theme.borderRadius.md,
+    overflow: 'hidden',
+    width: '100%',
+  },
+  gradientBtn: {
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  btnText: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  resultsContainer: {
+    gap: 12,
+  },
+  metricsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  metricCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: 16,
+    width: '48%',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.surfaceBorder,
+  },
+  metricLabel: {
+    color: theme.colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  metricValue: {
+    color: theme.colors.text,
+    fontSize: 28,
+    fontWeight: '900',
+  },
+  metricBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 10,
+    marginTop: 6,
+  },
+  metricSub: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  metricSubMuted: {
+    color: theme.colors.textMuted,
+    fontSize: 11,
+    marginTop: 6,
+  },
+  chartTitle: {
+    color: theme.colors.text,
+    fontSize: 16,
+    fontWeight: '700',
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  chartCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
+    padding: 12,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: theme.colors.surfaceBorder,
+    alignItems: 'center',
+  },
+  macroGramsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+    paddingVertical: 10,
+    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.surfaceBorder,
+  },
+  macroStat: {
+    alignItems: 'center',
+  },
+  macroVal: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  macroName: {
+    color: theme.colors.textMuted,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  cardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 14,
+    alignSelf: 'flex-start',
+  },
+  cardTitle: {
+    color: theme.colors.text,
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  recItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginBottom: 12,
+    width: '100%',
+  },
+  recText: {
+    color: theme.colors.textSecondary,
+    fontSize: 14,
+    lineHeight: 20,
+    flex: 1,
+  },
 });
