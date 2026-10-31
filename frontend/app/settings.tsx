@@ -1,27 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import {
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Linking, Platform, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
 import { useToast } from '@/components/Toast';
 import { theme } from '@/constants/theme';
-import { checkApiHealth, drainOfflineQueue } from '@/lib/api';
-import {
-  clearLocalData,
-  getOfflineQueue,
-  getUnitSystem,
-  loadProfile,
-  setUnitSystem,
-} from '@/lib/storage';
+import { API_BASE_URL, checkApiHealth, deleteRemoteData, drainOfflineQueue, exportUrl, parseApiError } from '@/lib/api';
+import { confirmAction } from '@/lib/confirm';
+import { remindersSupported } from '@/lib/notifications';
+import { clearLocalData, getOfflineQueue, getUnitSystem, getUserId, setUnitSystem } from '@/lib/storage';
 import { UnitSystem } from '@/lib/types';
 
 export default function SettingsScreen() {
@@ -76,32 +64,38 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleExportData = async () => {
-    const profile = await loadProfile();
-    Alert.alert(
-      'Exported Profile Data',
-      JSON.stringify(profile, null, 2),
-      [{ text: 'Done', style: 'default' }]
-    );
+  const handleExportData = async (format: 'json' | 'csv') => {
+    const url = exportUrl(await getUserId(), format);
+    try {
+      if (Platform.OS === 'web') {
+        window.open(url, '_blank');
+      } else {
+        await Linking.openURL(url);
+      }
+      showToast(`Preparing your ${format.toUpperCase()} export…`, 'success');
+    } catch {
+      showToast('Could not open the export link.', 'error');
+    }
   };
 
-  const handleClearData = () => {
-    Alert.alert(
-      'Clear All Local Data',
-      'This will erase all locally cached profile metrics, goals, and chat conversation history. Are you sure?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Clear All Data',
-          style: 'destructive',
-          onPress: async () => {
-            await clearLocalData();
-            showToast('All local data cleared', 'success');
-            router.replace('/onboarding');
-          },
-        },
-      ]
-    );
+  const handleClearData = async () => {
+    const ok = await confirmAction({
+      title: 'Delete all data?',
+      message:
+        'This permanently deletes your profile, logs, medications and vitals from the server and this device. Export first if you want a copy.',
+      confirmText: 'Delete everything',
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await deleteRemoteData(await getUserId());
+    } catch (err) {
+      showToast(`Server data not deleted: ${parseApiError(err)}`, 'error');
+      return;
+    }
+    await clearLocalData();
+    showToast('All data deleted', 'success');
+    router.replace('/onboarding');
   };
 
   return (
@@ -139,7 +133,7 @@ export default function SettingsScreen() {
           <View style={styles.row}>
             <View>
               <Text style={styles.rowLabel}>API Status</Text>
-              <Text style={styles.rowSub}>http://localhost:8000</Text>
+              <Text style={styles.rowSub}>{API_BASE_URL}</Text>
             </View>
             <View style={styles.statusBadge}>
               <View
@@ -150,17 +144,13 @@ export default function SettingsScreen() {
                       apiHealthy === true
                         ? theme.colors.success
                         : apiHealthy === false
-                        ? theme.colors.error
-                        : theme.colors.warning,
+                          ? theme.colors.error
+                          : theme.colors.warning,
                   },
                 ]}
               />
               <Text style={styles.statusText}>
-                {testingConnection
-                  ? 'Testing...'
-                  : apiHealthy === true
-                  ? 'Connected'
-                  : 'Offline'}
+                {testingConnection ? 'Testing...' : apiHealthy === true ? 'Connected' : 'Offline'}
               </Text>
             </View>
           </View>
@@ -175,20 +165,12 @@ export default function SettingsScreen() {
             <View>
               <Text style={styles.rowLabel}>Offline Queue</Text>
               <Text style={styles.rowSub}>
-                {offlineCount > 0
-                  ? `${offlineCount} pending action(s) to sync`
-                  : 'All actions synchronized'}
+                {offlineCount > 0 ? `${offlineCount} pending action(s) to sync` : 'All actions synchronized'}
               </Text>
             </View>
             {offlineCount > 0 && (
-              <TouchableOpacity
-                style={styles.syncBtn}
-                onPress={handleManualSync}
-                disabled={syncingOffline}
-              >
-                <Text style={styles.syncBtnText}>
-                  {syncingOffline ? 'Syncing...' : 'Sync Now'}
-                </Text>
+              <TouchableOpacity style={styles.syncBtn} onPress={handleManualSync} disabled={syncingOffline}>
+                <Text style={styles.syncBtnText}>{syncingOffline ? 'Syncing...' : 'Sync Now'}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -198,28 +180,38 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Data Management</Text>
 
-          <TouchableOpacity style={styles.actionRow} onPress={handleExportData}>
-            <Ionicons name="download-outline" size={20} color={theme.colors.textSecondary} />
-            <Text style={styles.actionRowText}>Export Profile Data (JSON)</Text>
+          <TouchableOpacity style={styles.actionRow} onPress={() => handleExportData('csv')}>
+            <Ionicons name="grid-outline" size={20} color={theme.colors.textSecondary} />
+            <Text style={styles.actionRowText}>Export all data as CSV (spreadsheet-ready ZIP)</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.actionRow, { borderBottomWidth: 0 }]}
-            onPress={handleClearData}
-          >
-            <Ionicons name="trash-outline" size={20} color={theme.colors.error} />
-            <Text style={[styles.actionRowText, { color: theme.colors.error }]}>
-              Clear All Local Data
+          <TouchableOpacity style={styles.actionRow} onPress={() => handleExportData('json')}>
+            <Ionicons name="code-download-outline" size={20} color={theme.colors.textSecondary} />
+            <Text style={styles.actionRowText}>Export all data as JSON</Text>
+          </TouchableOpacity>
+
+          <View style={styles.actionRow}>
+            <Ionicons name="notifications-outline" size={20} color={theme.colors.textSecondary} />
+            <Text style={styles.actionRowText}>
+              {remindersSupported
+                ? 'Medication reminders: on (managed in Medications)'
+                : 'Medication reminders: available in the iOS/Android app'}
             </Text>
+          </View>
+
+          <TouchableOpacity style={[styles.actionRow, { borderBottomWidth: 0 }]} onPress={handleClearData}>
+            <Ionicons name="trash-outline" size={20} color={theme.colors.error} />
+            <Text style={[styles.actionRowText, { color: theme.colors.error }]}>Delete All My Data</Text>
           </TouchableOpacity>
         </View>
 
         {/* About App */}
         <View style={styles.aboutCard}>
           <Text style={styles.aboutTitle}>Wellora AI Health Assistant</Text>
-          <Text style={styles.aboutVersion}>Version 2.0.0 • Production Grade</Text>
+          <Text style={styles.aboutVersion}>Version 3.0.0</Text>
           <Text style={styles.aboutDesc}>
-            Built with Fast, Localized NLP, Mifflin-St Jeor Biometrics, and Dual Offline Sync.
+            Nutrition, medications, vitals, sleep, habits and a personal coach — with offline sync. Not a substitute for
+            professional medical advice.
           </Text>
         </View>
       </ScrollView>

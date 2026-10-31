@@ -1,22 +1,32 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import 'react-native-reanimated';
 
 import { ToastProvider } from '@/components/Toast';
-import { useColorScheme } from '@/components/useColorScheme';
+import { theme } from '@/constants/theme';
 import { isOnboardingComplete } from '@/lib/storage';
 
 export { ErrorBoundary } from 'expo-router';
 
-export const unstable_settings = {
-  initialRouteName: '(tabs)',
-};
+export const unstable_settings = { initialRouteName: '(tabs)' };
 
 SplashScreen.preventAutoHideAsync();
+
+const navTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: theme.colors.background,
+    card: theme.colors.background,
+    primary: theme.colors.accent,
+    border: theme.colors.surfaceBorder,
+  },
+};
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
@@ -29,14 +39,10 @@ export default function RootLayout() {
   }, [error]);
 
   useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
+    if (loaded) SplashScreen.hideAsync();
   }, [loaded]);
 
-  if (!loaded) {
-    return null;
-  }
+  if (!loaded) return null;
 
   return (
     <ToastProvider>
@@ -46,31 +52,27 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
-  const colorScheme = useColorScheme();
   const router = useRouter();
   const segments = useSegments();
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    const checkOnboarding = async () => {
-      const complete = await isOnboardingComplete();
-      const inOnboarding = segments[0] === 'onboarding';
-      if (!complete && !inOnboarding) {
-        router.replace('/onboarding');
-      }
+    isOnboardingComplete().then((complete) => {
+      if (!complete && segments[0] !== 'onboarding') router.replace('/onboarding');
       setChecked(true);
-    };
-    checkOnboarding();
-  }, [segments]);
+    });
+  }, [segments, router]);
 
   if (!checked) return null;
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
-        <Stack.Screen name="settings" options={{ headerShown: false, presentation: 'modal' }} />
+    <ThemeProvider value={navTheme}>
+      <StatusBar style="light" />
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.colors.background } }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
+        <Stack.Screen name="settings" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="tracker" />
         <Stack.Screen name="+not-found" />
       </Stack>
     </ThemeProvider>

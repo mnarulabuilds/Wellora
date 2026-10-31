@@ -1,14 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import {
-  ActivityIndicator,
-  Dimensions,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Dimensions, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,9 +9,10 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { ChartSkeleton } from '@/components/SkeletonLoader';
 import { useToast } from '@/components/Toast';
 import { theme } from '@/constants/theme';
-import { generateReport } from '@/lib/api';
-import { isProfileComplete, loadProfile } from '@/lib/storage';
-import { HealthReport, UserProfile } from '@/lib/types';
+import { WeeklyReportCard } from '@/components/WeeklyReportCard';
+import { fetchWeeklyReport, generateReport } from '@/lib/api';
+import { getUserId, isProfileComplete, loadProfile } from '@/lib/storage';
+import { HealthReport, WeeklyReport } from '@/lib/types';
 
 export default function AnalyticsScreen() {
   const router = useRouter();
@@ -29,31 +21,37 @@ export default function AnalyticsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [profileComplete, setProfileComplete] = useState(true);
-  const [userProfile, setUserProfile] = useState<Partial<UserProfile>>({});
   const [reportData, setReportData] = useState<HealthReport | null>(null);
+  const [weekly, setWeekly] = useState<WeeklyReport | null>(null);
 
   const screenWidth = Dimensions.get('window').width;
 
-  const fetchAnalytics = useCallback(async (isRefresh = false) => {
-    if (!isRefresh) setLoading(true);
-    try {
-      const complete = await isProfileComplete();
-      setProfileComplete(complete);
+  const fetchAnalytics = useCallback(
+    async (isRefresh = false) => {
+      if (!isRefresh) setLoading(true);
+      try {
+        const complete = await isProfileComplete();
+        setProfileComplete(complete);
 
-      const profile = await loadProfile();
-      setUserProfile(profile);
+        const profile = await loadProfile();
 
-      if (complete && profile.age && profile.weight && profile.height) {
-        const report = await generateReport(profile);
-        setReportData(report);
+        fetchWeeklyReport(await getUserId())
+          .then(setWeekly)
+          .catch(() => setWeekly(null));
+
+        if (complete && profile.age && profile.weight && profile.height) {
+          const report = await generateReport(profile);
+          setReportData(report);
+        }
+      } catch {
+        showToast('Could not load report. Please check server.', 'error');
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
       }
-    } catch {
-      showToast('Could not load report. Please check server.', 'error');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [showToast]);
+    },
+    [showToast]
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -94,8 +92,8 @@ export default function AnalyticsScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.title}>Health Analytics</Text>
-            <Text style={styles.subtitle}>Personalized Projections & Macros</Text>
+            <Text style={styles.title}>Insights</Text>
+            <Text style={styles.subtitle}>Weekly progress, macros & projections</Text>
           </View>
           <TouchableOpacity
             style={styles.refreshBtn}
@@ -106,19 +104,18 @@ export default function AnalyticsScreen() {
           </TouchableOpacity>
         </View>
 
+        {weekly && !loading && <WeeklyReportCard report={weekly} />}
+
         {/* If Profile Incomplete */}
         {!profileComplete && !loading && (
           <View style={styles.card}>
             <Ionicons name="alert-circle" size={32} color={theme.colors.warning} />
             <Text style={styles.incompleteTitle}>Complete Your Profile</Text>
             <Text style={styles.incompleteSub}>
-              To calculate accurate BMI, TDEE, macro breakdowns, and 12-week weight projections,
-              please input your age, weight, and height.
+              To calculate accurate BMI, TDEE, macro breakdowns, and 12-week weight projections, please input your age,
+              weight, and height.
             </Text>
-            <TouchableOpacity
-              style={styles.actionBtn}
-              onPress={() => router.push('/profile')}
-            >
+            <TouchableOpacity style={styles.actionBtn} onPress={() => router.push('/profile')}>
               <LinearGradient colors={theme.colors.accentGradient} style={styles.gradientBtn}>
                 <Text style={styles.btnText}>Go to Profile</Text>
               </LinearGradient>
@@ -146,9 +143,7 @@ export default function AnalyticsScreen() {
                     styles.metricBadge,
                     {
                       backgroundColor:
-                        reportData.bmi_category === 'Normal'
-                          ? 'rgba(16, 185, 129, 0.2)'
-                          : 'rgba(245, 158, 11, 0.2)',
+                        reportData.bmi_category === 'Normal' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
                     },
                   ]}
                 >
@@ -156,10 +151,7 @@ export default function AnalyticsScreen() {
                     style={[
                       styles.metricSub,
                       {
-                        color:
-                          reportData.bmi_category === 'Normal'
-                            ? theme.colors.success
-                            : theme.colors.warning,
+                        color: reportData.bmi_category === 'Normal' ? theme.colors.success : theme.colors.warning,
                       },
                     ]}
                   >
@@ -220,9 +212,7 @@ export default function AnalyticsScreen() {
                     <Text style={styles.macroName}>Carbs (40%)</Text>
                   </View>
                   <View style={styles.macroStat}>
-                    <Text style={[styles.macroVal, { color: '#FCD34D' }]}>
-                      {reportData.charts.macros.grams.fats}g
-                    </Text>
+                    <Text style={[styles.macroVal, { color: '#FCD34D' }]}>{reportData.charts.macros.grams.fats}g</Text>
                     <Text style={styles.macroName}>Fats (25%)</Text>
                   </View>
                 </View>
@@ -232,27 +222,21 @@ export default function AnalyticsScreen() {
                 data={[
                   {
                     name: 'Protein',
-                    population: Math.round(
-                      (reportData.daily_calories * reportData.charts.macros.data[0]) / 4
-                    ),
+                    population: Math.round((reportData.daily_calories * reportData.charts.macros.data[0]) / 4),
                     color: theme.colors.calories,
                     legendFontColor: theme.colors.textSecondary,
                     legendFontSize: 13,
                   },
                   {
                     name: 'Carbs',
-                    population: Math.round(
-                      (reportData.daily_calories * reportData.charts.macros.data[1]) / 4
-                    ),
+                    population: Math.round((reportData.daily_calories * reportData.charts.macros.data[1]) / 4),
                     color: theme.colors.steps,
                     legendFontColor: theme.colors.textSecondary,
                     legendFontSize: 13,
                   },
                   {
                     name: 'Fats',
-                    population: Math.round(
-                      (reportData.daily_calories * reportData.charts.macros.data[2]) / 9
-                    ),
+                    population: Math.round((reportData.daily_calories * reportData.charts.macros.data[2]) / 9),
                     color: '#FCD34D',
                     legendFontColor: theme.colors.textSecondary,
                     legendFontSize: 13,

@@ -1,14 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,24 +7,9 @@ import { useRouter } from 'expo-router';
 
 import { ChipSelector } from '@/components/ChipSelector';
 import { useToast } from '@/components/Toast';
-import {
-  ACTIVITY_LEVELS,
-  DIETARY_OPTIONS,
-  GENDERS,
-  HEALTH_GOALS,
-  theme,
-} from '@/constants/theme';
+import { ACTIVITY_LEVELS, DIETARY_OPTIONS, GENDERS, HEALTH_GOALS, theme } from '@/constants/theme';
 import { fetchProfileFromBackend, syncProfileToBackend } from '@/lib/api';
-import {
-  cmToInches,
-  getUnitSystem,
-  getUserId,
-  inchesToCm,
-  kgToLbs,
-  lbsToKg,
-  loadProfile,
-  saveProfileLocal,
-} from '@/lib/storage';
+import { getUnitSystem, getUserId, loadProfile, saveProfileLocal } from '@/lib/storage';
 import { UnitSystem, UserProfile } from '@/lib/types';
 
 export default function ProfileScreen() {
@@ -240,9 +216,7 @@ export default function ProfileScreen() {
 
           <View style={styles.row}>
             <View style={styles.halfInput}>
-              <Text style={styles.label}>
-                Weight ({unitSystem === 'metric' ? 'kg' : 'lbs'})
-              </Text>
+              <Text style={styles.label}>Weight ({unitSystem === 'metric' ? 'kg' : 'lbs'})</Text>
               <TextInput
                 style={styles.input}
                 placeholder={unitSystem === 'metric' ? '72' : '158'}
@@ -254,9 +228,7 @@ export default function ProfileScreen() {
             </View>
 
             <View style={styles.halfInput}>
-              <Text style={styles.label}>
-                Height ({unitSystem === 'metric' ? 'cm' : 'in'})
-              </Text>
+              <Text style={styles.label}>Height ({unitSystem === 'metric' ? 'cm' : 'in'})</Text>
               <TextInput
                 style={styles.input}
                 placeholder={unitSystem === 'metric' ? '175' : '69'}
@@ -272,11 +244,7 @@ export default function ProfileScreen() {
         {/* Section 2: Activity Level */}
         <View style={styles.section}>
           <Text style={styles.sectionHeader}>Activity Level</Text>
-          <ChipSelector
-            options={ACTIVITY_LEVELS}
-            selected={activityLevel}
-            onSelect={setActivityLevel}
-          />
+          <ChipSelector options={ACTIVITY_LEVELS} selected={activityLevel} onSelect={setActivityLevel} />
         </View>
 
         {/* Section 3: Health Goals */}
@@ -296,9 +264,7 @@ export default function ProfileScreen() {
           <ChipSelector
             options={DIETARY_OPTIONS}
             selected={dietaryPreferences}
-            onSelect={(item) =>
-              toggleMultiSelect(item, dietaryPreferences, setDietaryPreferences)
-            }
+            onSelect={(item) => toggleMultiSelect(item, dietaryPreferences, setDietaryPreferences)}
             multi
           />
         </View>
@@ -361,16 +327,9 @@ export default function ProfileScreen() {
         </View>
 
         {/* Save Button */}
-        <TouchableOpacity
-          style={styles.saveBtnWrap}
-          onPress={handleSave}
-          disabled={loading}
-          activeOpacity={0.85}
-        >
+        <TouchableOpacity style={styles.saveBtnWrap} onPress={handleSave} disabled={loading} activeOpacity={0.85}>
           <LinearGradient colors={theme.colors.accentGradient} style={styles.saveBtn}>
-            <Text style={styles.saveBtnText}>
-              {loading ? 'Saving Profile...' : 'Save Profile & Targets'}
-            </Text>
+            <Text style={styles.saveBtnText}>{loading ? 'Saving Profile...' : 'Save Profile & Targets'}</Text>
           </LinearGradient>
         </TouchableOpacity>
       </ScrollView>

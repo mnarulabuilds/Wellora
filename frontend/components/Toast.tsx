@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import { Animated, StyleSheet, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/constants/theme';
 
@@ -15,6 +15,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [visible, setVisible] = useState(false);
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(20)).current;
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showToast = useCallback(
     (msg: string, toastType: 'success' | 'error' | 'info' = 'info') => {
@@ -27,7 +28,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         Animated.spring(translateY, { toValue: 0, friction: 6, useNativeDriver: true }),
       ]).start();
 
-      setTimeout(() => {
+      // Restart the timer so a new toast isn't dismissed early by an older one.
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+      hideTimer.current = setTimeout(() => {
         Animated.parallel([
           Animated.timing(opacity, { toValue: 0, duration: 250, useNativeDriver: true }),
           Animated.timing(translateY, { toValue: 20, duration: 250, useNativeDriver: true }),
@@ -38,28 +41,19 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   );
 
   const bgColor =
-    type === 'success'
-      ? theme.colors.success
-      : type === 'error'
-      ? theme.colors.error
-      : theme.colors.primary;
+    type === 'success' ? theme.colors.success : type === 'error' ? theme.colors.error : theme.colors.primary;
 
-  const iconName =
-    type === 'success'
-      ? 'checkmark-circle'
-      : type === 'error'
-      ? 'alert-circle'
-      : 'information-circle';
+  const iconName = type === 'success' ? 'checkmark-circle' : type === 'error' ? 'alert-circle' : 'information-circle';
 
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
       {visible && (
         <Animated.View
-          style={[
-            styles.container,
-            { opacity, transform: [{ translateY }], backgroundColor: bgColor },
-          ]}
+          accessibilityLiveRegion="polite"
+          accessibilityRole="alert"
+          pointerEvents="none"
+          style={[styles.container, { opacity, transform: [{ translateY }], backgroundColor: bgColor }]}
         >
           <Ionicons name={iconName} size={20} color="#ffffff" style={{ marginRight: 8 }} />
           <Text style={styles.text}>{message}</Text>
@@ -79,6 +73,8 @@ const styles = StyleSheet.create({
     bottom: 90,
     left: 20,
     right: 20,
+    maxWidth: 560,
+    alignSelf: 'center',
     paddingVertical: 14,
     paddingHorizontal: 18,
     borderRadius: theme.borderRadius.md,

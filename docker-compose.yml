@@ -1,0 +1,51 @@
+# One command to run everything:  docker compose up --build   (or: make up)
+#   Web app  -> http://localhost:8080
+#   API docs -> http://localhost:8000/docs
+name: wellora
+
+services:
+  backend:
+    build:
+      context: ./backend
+      target: runtime
+    environment:
+      WELLORA_DB_PATH: /data/wellora.db
+      # Your local timezone: decides when a new day starts and when doses are overdue.
+      TZ: ${TZ:-Asia/Kolkata}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      WELLORA_SEED_DEMO: ${WELLORA_SEED_DEMO:-false}
+    volumes:
+      - wellora-data:/data
+    ports:
+      - "${API_PORT:-8000}:8000"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./frontend
+      target: web
+      args:
+        EXPO_PUBLIC_API_BASE_URL: /api
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    restart: unless-stopped
+
+  # ---- test runners: `docker compose --profile test run --rm backend-tests` ----
+  backend-tests:
+    profiles: ["test"]
+    build:
+      context: ./backend
+      target: test
+
+  frontend-tests:
+    profiles: ["test"]
+    build:
+      context: ./frontend
+      target: test
+
+volumes:
+  wellora-data:

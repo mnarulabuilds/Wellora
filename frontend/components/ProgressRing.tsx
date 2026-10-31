@@ -54,8 +54,16 @@ export function ProgressRing({
       </Svg>
       <View style={styles.labelContainer}>
         {icon && <View style={styles.iconWrap}>{icon}</View>}
-        {label && <Text style={styles.label} numberOfLines={1}>{label}</Text>}
-        {sublabel && <Text style={styles.sublabel} numberOfLines={1}>{sublabel}</Text>}
+        {label && (
+          <Text style={styles.label} numberOfLines={1}>
+            {label}
+          </Text>
+        )}
+        {sublabel && (
+          <Text style={styles.sublabel} numberOfLines={1}>
+            {sublabel}
+          </Text>
+        )}
       </View>
     </View>
   );

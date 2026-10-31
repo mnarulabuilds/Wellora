@@ -1,12 +1,5 @@
 import React, { useState } from 'react';
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,13 +7,7 @@ import { useRouter } from 'expo-router';
 
 import { ChipSelector } from '@/components/ChipSelector';
 import { useToast } from '@/components/Toast';
-import {
-  ACTIVITY_LEVELS,
-  DIETARY_OPTIONS,
-  GENDERS,
-  HEALTH_GOALS,
-  theme,
-} from '@/constants/theme';
+import { ACTIVITY_LEVELS, DIETARY_OPTIONS, GENDERS, HEALTH_GOALS, theme } from '@/constants/theme';
 import { syncProfileToBackend } from '@/lib/api';
 import { getUserId, saveProfileLocal, setOnboardingComplete } from '@/lib/storage';
 
@@ -38,9 +25,9 @@ export default function OnboardingScreen() {
   const [dietaryPreferences, setDietaryPreferences] = useState<string[]>([]);
   const [healthGoals, setHealthGoals] = useState<string[]>(['maintenance']);
   const [targetCalories, setTargetCalories] = useState('2000');
-  const [targetSteps, setTargetSteps] = useState('10000');
+  const [targetSteps] = useState('10000');
   const [targetWater, setTargetWater] = useState('2.5');
-  const [targetWorkoutMinutes, setTargetWorkoutMinutes] = useState('30');
+  const [targetWorkoutMinutes] = useState('30');
   const [loading, setLoading] = useState(false);
 
   const toggleMulti = (value: string, current: string[], setter: (v: string[]) => void) => {
@@ -236,11 +223,7 @@ export default function OnboardingScreen() {
       <Text style={styles.stepDesc}>Select your active lifestyle and daily wellness ambitions.</Text>
 
       <Text style={styles.label}>Activity Level</Text>
-      <ChipSelector
-        options={ACTIVITY_LEVELS}
-        selected={activityLevel}
-        onSelect={setActivityLevel}
-      />
+      <ChipSelector options={ACTIVITY_LEVELS} selected={activityLevel} onSelect={setActivityLevel} />
 
       <Text style={[styles.label, { marginTop: 14 }]}>Primary Health Goals</Text>
       <ChipSelector
@@ -290,13 +273,7 @@ export default function OnboardingScreen() {
         {/* Step Indicator */}
         <View style={styles.progressRow}>
           {[0, 1, 2].map((i) => (
-            <View
-              key={i}
-              style={[
-                styles.progressDot,
-                i <= step && styles.progressDotActive,
-              ]}
-            />
+            <View key={i} style={[styles.progressDot, i <= step && styles.progressDotActive]} />
           ))}
         </View>
 
@@ -305,25 +282,14 @@ export default function OnboardingScreen() {
         {/* Navigation Buttons */}
         <View style={styles.buttonsRow}>
           {step > 0 && (
-            <TouchableOpacity
-              style={styles.backBtn}
-              onPress={() => setStep(step - 1)}
-              accessibilityLabel="Go back"
-            >
+            <TouchableOpacity style={styles.backBtn} onPress={() => setStep(step - 1)} accessibilityLabel="Go back">
               <Text style={styles.backBtnText}>Back</Text>
             </TouchableOpacity>
           )}
 
-          <TouchableOpacity
-            style={styles.nextBtnWrap}
-            onPress={handleNext}
-            disabled={loading}
-            activeOpacity={0.85}
-          >
+          <TouchableOpacity style={styles.nextBtnWrap} onPress={handleNext} disabled={loading} activeOpacity={0.85}>
             <LinearGradient colors={theme.colors.accentGradient} style={styles.nextBtn}>
-              <Text style={styles.nextBtnText}>
-                {loading ? 'Saving...' : step < 2 ? 'Continue' : 'Get Started ✨'}
-              </Text>
+              <Text style={styles.nextBtnText}>{loading ? 'Saving...' : step < 2 ? 'Continue' : 'Get Started ✨'}</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>

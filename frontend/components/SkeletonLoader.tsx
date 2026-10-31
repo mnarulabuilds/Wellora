@@ -23,15 +23,7 @@ export function Skeleton({ width = '100%', height = 16, borderRadius = 8, style 
     return () => animation.stop();
   }, [opacity]);
 
-  return (
-    <Animated.View
-      style={[
-        styles.skeleton,
-        { width, height, borderRadius, opacity },
-        style,
-      ]}
-    />
-  );
+  return <Animated.View style={[styles.skeleton, { width, height, borderRadius, opacity }, style]} />;
 }
 
 export function ScoreCardSkeleton() {

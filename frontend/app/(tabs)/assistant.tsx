@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -19,13 +18,16 @@ import { useFocusEffect } from 'expo-router';
 import { useToast } from '@/components/Toast';
 import { SUGGESTED_PROMPTS, theme } from '@/constants/theme';
 import { analyzeQuery } from '@/lib/api';
-import {
-  clearChatHistory,
-  getChatHistory,
-  getUserId,
-  saveChatHistory,
-} from '@/lib/storage';
+import { clearChatHistory, getChatHistory, getUserId, saveChatHistory } from '@/lib/storage';
+import { confirmAction } from '@/lib/confirm';
 import { ChatMessage } from '@/lib/types';
+
+const welcomeMessage = (): ChatMessage => ({
+  id: 'welcome-1',
+  text: "Hi! I'm Wellora, your personal wellness coach. Ask me about nutrition, workouts, sleep, stress, medications or your vitals — I'll use what you've logged to personalise my answers.\n\nWhat would you like help with today?",
+  sender: 'assistant',
+  timestamp: new Date().toISOString(),
+});
 
 export default function AssistantScreen() {
   const { showToast } = useToast();
@@ -34,13 +36,6 @@ export default function AssistantScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
-
-  const initialWelcome: ChatMessage = {
-    id: 'welcome-1',
-    text: "Hello! I'm Wellora, your personal AI health and lifestyle assistant. I'm here to support your nutrition, workout routines, sleep hygiene, hydration, stress management, and daily habits.\n\nHow can I help you thrive today?",
-    sender: 'assistant',
-    timestamp: new Date().toISOString(),
-  };
 
   useFocusEffect(
     useCallback(() => {
@@ -51,7 +46,7 @@ export default function AssistantScreen() {
         if (history && history.length > 0) {
           setMessages(history);
         } else {
-          setMessages([initialWelcome]);
+          setMessages([welcomeMessage()]);
         }
       };
       initChat();
@@ -89,6 +84,7 @@ export default function AssistantScreen() {
         sender: 'assistant',
         timestamp: new Date().toISOString(),
         intent: res.intent,
+        suggestions: res.suggestions,
       };
       await persistMessages([...currentList, aiMessage]);
     } catch {
@@ -116,24 +112,22 @@ export default function AssistantScreen() {
     }
   };
 
-  const handleClearChat = () => {
-    Alert.alert(
-      'Clear Conversation',
-      'Are you sure you want to clear your chat history with Wellora?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Clear',
-          style: 'destructive',
-          onPress: async () => {
-            await clearChatHistory(userId);
-            setMessages([initialWelcome]);
-            showToast('Conversation reset', 'info');
-          },
-        },
-      ]
-    );
+  const handleClearChat = async () => {
+    const ok = await confirmAction({
+      title: 'Clear conversation?',
+      message: 'This removes your chat history with Wellora on this device.',
+      confirmText: 'Clear',
+      destructive: true,
+    });
+    if (!ok) return;
+    await clearChatHistory(userId);
+    setMessages([welcomeMessage()]);
+    showToast('Conversation reset', 'info');
   };
+
+  // Follow-up chips from the latest coach reply, falling back to starter prompts.
+  const lastReply = [...messages].reverse().find((m) => m.sender === 'assistant' && !m.isError);
+  const prompts = lastReply?.suggestions?.length ? lastReply.suggestions : SUGGESTED_PROMPTS;
 
   useEffect(() => {
     setTimeout(() => {
@@ -151,34 +145,20 @@ export default function AssistantScreen() {
           </View>
           <View>
             <Text style={styles.headerTitle}>Wellora AI</Text>
-            <Text style={styles.headerSubtitle}>Wellness & Lifestyle Coach</Text>
+            <Text style={styles.headerSubtitle}>Personal wellness coach · knows your logs</Text>
           </View>
         </View>
-        <TouchableOpacity
-          style={styles.clearBtn}
-          onPress={handleClearChat}
-          accessibilityLabel="Clear chat"
-        >
+        <TouchableOpacity style={styles.clearBtn} onPress={handleClearChat} accessibilityLabel="Clear chat">
           <Ionicons name="trash-outline" size={20} color={theme.colors.textMuted} />
         </TouchableOpacity>
       </View>
 
       {/* Messages */}
-      <ScrollView
-        style={styles.messagesContainer}
-        contentContainerStyle={styles.messagesContent}
-        ref={scrollViewRef}
-      >
+      <ScrollView style={styles.messagesContainer} contentContainerStyle={styles.messagesContent} ref={scrollViewRef}>
         {messages.map((msg, index) => {
           const isUser = msg.sender === 'user';
           return (
-            <View
-              key={msg.id}
-              style={[
-                styles.messageRow,
-                isUser ? styles.userMessageRow : styles.aiMessageRow,
-              ]}
-            >
+            <View key={msg.id} style={[styles.messageRow, isUser ? styles.userMessageRow : styles.aiMessageRow]}>
               {!isUser && (
                 <View style={styles.aiAvatarSmall}>
                   <Ionicons name="sparkles" size={14} color="#ffffff" />
@@ -193,9 +173,7 @@ export default function AssistantScreen() {
               >
                 {msg.intent && (
                   <View style={styles.intentBadge}>
-                    <Text style={styles.intentText}>
-                      {msg.intent.replace(/_/g, ' ').toUpperCase()}
-                    </Text>
+                    <Text style={styles.intentText}>{msg.intent.replace(/_/g, ' ').toUpperCase()}</Text>
                   </View>
                 )}
                 <Text style={styles.messageText}>{msg.text}</Text>
@@ -207,10 +185,7 @@ export default function AssistantScreen() {
                     })}
                   </Text>
                   {msg.isError && (
-                    <TouchableOpacity
-                      onPress={() => handleRetry(index)}
-                      style={styles.retryBtn}
-                    >
+                    <TouchableOpacity onPress={() => handleRetry(index)} style={styles.retryBtn}>
                       <Ionicons name="refresh" size={13} color="#ffffff" />
                       <Text style={styles.retryText}>Retry</Text>
                     </TouchableOpacity>
@@ -236,12 +211,8 @@ export default function AssistantScreen() {
 
       {/* Suggested Prompts (when few messages or at end) */}
       <View style={styles.promptsSection}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.promptsScroll}
-        >
-          {SUGGESTED_PROMPTS.map((prompt, idx) => (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.promptsScroll}>
+          {prompts.map((prompt, idx) => (
             <TouchableOpacity
               key={idx}
               style={styles.promptChip}
@@ -267,6 +238,14 @@ export default function AssistantScreen() {
             value={input}
             onChangeText={setInput}
             onSubmitEditing={() => handleSendMessage()}
+            onKeyPress={(e) => {
+              // Web: Enter sends, Shift+Enter adds a new line (multiline inputs never fire onSubmitEditing).
+              const native = e.nativeEvent as unknown as { key: string; shiftKey?: boolean };
+              if (Platform.OS === 'web' && native.key === 'Enter' && !native.shiftKey) {
+                (e as unknown as { preventDefault: () => void }).preventDefault();
+                handleSendMessage();
+              }
+            }}
             returnKeyType="send"
             multiline
           />

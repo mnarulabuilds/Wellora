@@ -33,9 +33,7 @@ export function ChipSelector({ options, selected, onSelect, multi = false }: Chi
             accessibilityLabel={option.label}
             activeOpacity={0.7}
           >
-            <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
-              {option.label}
-            </Text>
+            <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>{option.label}</Text>
           </TouchableOpacity>
         );
       })}

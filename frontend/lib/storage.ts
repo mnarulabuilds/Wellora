@@ -21,7 +21,7 @@ const KEYS = {
   offlineQueue: 'offlineQueue',
 };
 
-function generateUUID(): string {
+export function generateUUID(): string {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
     const v = c === 'x' ? r : (r & 0x3) | 0x8;
@@ -191,10 +191,7 @@ export async function setUnitSystem(system: UnitSystem): Promise<void> {
   await AsyncStorage.setItem(KEYS.unitSystem, system);
 }
 
-export async function queueOfflineAction(
-  type: OfflineAction['type'],
-  payload: Record<string, unknown>
-): Promise<void> {
+export async function queueOfflineAction(type: OfflineAction['type'], payload: Record<string, unknown>): Promise<void> {
   try {
     const existing = await AsyncStorage.getItem(KEYS.offlineQueue);
     const queue: OfflineAction[] = existing ? JSON.parse(existing) : [];
@@ -237,21 +234,7 @@ export async function clearLocalData(): Promise<void> {
   await AsyncStorage.clear();
 }
 
-// Unit conversion helpers
-export function kgToLbs(kg: number): number {
-  return Math.round(kg * 2.20462 * 10) / 10;
-}
-
-export function lbsToKg(lbs: number): number {
-  return Math.round((lbs / 2.20462) * 10) / 10;
-}
-
-export function cmToInches(cm: number): number {
-  return Math.round((cm / 2.54) * 10) / 10;
-}
-
-export function inchesToCm(inches: number): number {
-  return Math.round(inches * 2.54 * 10) / 10;
-}
+// Unit helpers live in ./format; re-exported here for backwards compatibility.
+export { cmToInches, inchesToCm, kgToLbs, lbsToKg } from './format';
 
 export { KEYS };

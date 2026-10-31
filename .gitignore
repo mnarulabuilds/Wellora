@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local data
+*.db
+*.db-shm
+*.db-wal
+
+# Node / Expo
+node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/.expo/
+frontend/web-build/
+
+# Env & OS
+.env
+!frontend/.env
+.DS_Store
+*.log
